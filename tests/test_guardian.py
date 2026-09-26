@@ -126,3 +126,21 @@ class TestCLI:
     def test_cli_boundary_deny_exit_2(self):
         r = self.run("--path", "/etc/passwd", "--boundary", "/tmp/work")
         assert r.returncode == 2
+
+    def test_cli_version_flag(self):
+        """--version prints the module constant and exits 0."""
+        r = self.run("--version")
+        assert r.returncode == 0
+        import guardian
+        assert r.stdout.strip() == guardian.__version__
+        assert r.stdout.strip() != ""
+
+    def test_cli_version_does_not_require_cmd_or_stdin(self):
+        """--version must short-circuit before the command reader runs,
+        so it works even when no command is available on stdin."""
+        r = subprocess.run(
+            [sys.executable, str(GUARDIAN), "--version"],
+            stdin=subprocess.DEVNULL,
+            capture_output=True, text=True)
+        assert r.returncode == 0
+        assert r.stdout.strip() != ""
