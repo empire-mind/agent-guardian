@@ -1,15 +1,14 @@
 #!/usr/bin/env python3
 """Tests for guardian.py — every assertion below was verified by running it."""
+
 import json
 import subprocess
 import sys
 from pathlib import Path
 
-import pytest
-
 HERE = Path(__file__).resolve().parent
 sys.path.insert(0, str(HERE.parent))
-from guardian import scan_command, check_path_within_boundary  # noqa: E402
+from guardian import check_path_within_boundary, scan_command  # noqa: E402
 
 GUARDIAN = HERE.parent / "guardian.py"
 
@@ -103,7 +102,10 @@ class TestCLI:
     def run(self, *args, stdin=None):
         return subprocess.run(
             [sys.executable, str(GUARDIAN), *args],
-            input=stdin, capture_output=True, text=True)
+            input=stdin,
+            capture_output=True,
+            text=True,
+        )
 
     def test_cli_clean_exit_0(self):
         assert self.run("--cmd", "echo hi").returncode == 0

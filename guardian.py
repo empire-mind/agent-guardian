@@ -28,42 +28,66 @@ import sys
 # Patterns (MEDIUM tier — advisory warns). Each: (name, regex, explanation)
 # ---------------------------------------------------------------------------
 _MEDIUM = [
-    ("rm_recursive",
-     r"\brm\s+(-[a-zA-Z]*[rR][a-zA-Z]*|--recursive)\b",
-     "Destructive: recursive delete (rm -r). Permanently removes files."),
-    ("drop_table",
-     r"(?i)\bdrop\s+(table|database)\b",
-     "Destructive: SQL DROP detected. Permanently deletes database objects."),
-    ("truncate",
-     r"(?i)\btruncate\b",
-     "Destructive: SQL TRUNCATE detected. Deletes all rows from a table."),
-    ("git_force_push",
-     r"\bgit\s+push\b.*(-f\b|--force\b|(?<= )\+[^\s])",
-     "Destructive: git force-push rewrites remote history. Others may lose work."),
-    ("git_reset_hard",
-     r"\bgit\s+reset\s+--hard\b",
-     "Destructive: git reset --hard discards all uncommitted changes."),
-    ("git_discard_tree",
-     r"\bgit\s+(checkout|restore)\s+\.(?=\s|$)",
-     "Destructive: discards all uncommitted changes in the working tree."),
-    ("kubectl_delete",
-     r"\bkubectl\s+delete\b",
-     "Destructive: kubectl delete removes Kubernetes resources; may hit prod."),
-    ("docker_destructive",
-     r"\bdocker\s+(rm\s+-f|system\s+prune)\b",
-     "Destructive: docker force-remove or prune; may delete running containers."),
-    ("chmod_777",
-     r"\bchmod\s+(-R\s+)?777\b",
-     "Risky: chmod 777 makes files world-writable."),
-    ("curl_pipe_sh",
-     r"\bcurl\b[^|]*\|\s*(sh|bash)\b",
-     "Risky: piping a download straight into a shell executes remote code."),
-    ("dd_raw_device",
-     r"\bdd\b[^\n]*\bof=/dev/",
-     "Destructive: dd writing to a raw device can destroy a disk/partition."),
-    ("mkfs",
-     r"\bmkfs(\.\w+)?\b",
-     "Destructive: mkfs formats a filesystem, destroying its contents."),
+    (
+        "rm_recursive",
+        r"\brm\s+(-[a-zA-Z]*[rR][a-zA-Z]*|--recursive)\b",
+        "Destructive: recursive delete (rm -r). Permanently removes files.",
+    ),
+    (
+        "drop_table",
+        r"(?i)\bdrop\s+(table|database)\b",
+        "Destructive: SQL DROP detected. Permanently deletes database objects.",
+    ),
+    (
+        "truncate",
+        r"(?i)\btruncate\b",
+        "Destructive: SQL TRUNCATE detected. Deletes all rows from a table.",
+    ),
+    (
+        "git_force_push",
+        r"\bgit\s+push\b.*(-f\b|--force\b|(?<= )\+[^\s])",
+        "Destructive: git force-push rewrites remote history. Others may lose work.",
+    ),
+    (
+        "git_reset_hard",
+        r"\bgit\s+reset\s+--hard\b",
+        "Destructive: git reset --hard discards all uncommitted changes.",
+    ),
+    (
+        "git_discard_tree",
+        r"\bgit\s+(checkout|restore)\s+\.(?=\s|$)",
+        "Destructive: discards all uncommitted changes in the working tree.",
+    ),
+    (
+        "kubectl_delete",
+        r"\bkubectl\s+delete\b",
+        "Destructive: kubectl delete removes Kubernetes resources; may hit prod.",
+    ),
+    (
+        "docker_destructive",
+        r"\bdocker\s+(rm\s+-f|system\s+prune)\b",
+        "Destructive: docker force-remove or prune; may delete running containers.",
+    ),
+    (
+        "chmod_777",
+        r"\bchmod\s+(-R\s+)?777\b",
+        "Risky: chmod 777 makes files world-writable.",
+    ),
+    (
+        "curl_pipe_sh",
+        r"\bcurl\b[^|]*\|\s*(sh|bash)\b",
+        "Risky: piping a download straight into a shell executes remote code.",
+    ),
+    (
+        "dd_raw_device",
+        r"\bdd\b[^\n]*\bof=/dev/",
+        "Destructive: dd writing to a raw device can destroy a disk/partition.",
+    ),
+    (
+        "mkfs",
+        r"\bmkfs(\.\w+)?\b",
+        "Destructive: mkfs formats a filesystem, destroying its contents.",
+    ),
 ]
 
 # Obfuscation tripwire (gstack /careful idea): ${IFS}-splitting or
@@ -82,7 +106,9 @@ def _tokens(cmd):
     """Crude tokenization (word-splitting), one quote layer stripped."""
     toks = []
     for t in cmd.split():
-        if len(t) >= 2 and ((t[0] == '"' and t[-1] == '"') or (t[0] == "'" and t[-1] == "'")):
+        if len(t) >= 2 and (
+            (t[0] == '"' and t[-1] == '"') or (t[0] == "'" and t[-1] == "'")
+        ):
             t = t[1:-1]
         toks.append(t)
     return toks
@@ -99,7 +125,12 @@ def _high_rm_root(cmd):
         return False
     root = safe = False
     for tok in _tokens(cmd):
-        if tok in ("sudo", "rm", "--") or tok.startswith("-") or re.match(r"^\d?>", tok) or tok == "&":
+        if (
+            tok in ("sudo", "rm", "--")
+            or tok.startswith("-")
+            or re.match(r"^\d?>", tok)
+            or tok == "&"
+        ):
             continue
         if tok in _ROOT_TOKENS:
             root = True
@@ -123,8 +154,16 @@ def _high_forkbomb(cmd):
 
 # Safe exception (gstack /careful idea): a single-line rm -r<f> whose targets are
 # ALL throwaway build artifacts is allowed, not warned.
-_SAFE_ARTIFACTS = {"node_modules", ".next", "dist", "__pycache__", ".cache",
-                   "build", ".turbo", "coverage"}
+_SAFE_ARTIFACTS = {
+    "node_modules",
+    ".next",
+    "dist",
+    "__pycache__",
+    ".cache",
+    "build",
+    ".turbo",
+    "coverage",
+}
 
 
 def _is_safe_artifact_rm(cmd):
@@ -138,7 +177,7 @@ def _is_safe_artifact_rm(cmd):
         return False
     if not re.fullmatch(r"-[a-zA-Z]*[rR][a-zA-Z]*|--recursive", toks[i]):
         return False
-    targets = toks[i + 1:]
+    targets = toks[i + 1 :]
     if not targets:
         return False
     return all(t.rstrip("/").split("/")[-1] in _SAFE_ARTIFACTS for t in targets)
@@ -148,14 +187,22 @@ def scan_command(cmd):
     """Return (tier, findings). tier in {'clean','warn','deny'}."""
     findings = []
     if _high_rm_root(cmd) or _high_rm_root_anywhere(cmd):
-        findings.append(("high_rm_root",
-                         "Recursive delete of / or the whole home directory is blocked."))
+        findings.append(
+            (
+                "high_rm_root",
+                "Recursive delete of / or the whole home directory is blocked.",
+            )
+        )
     if _high_forkbomb(cmd):
         findings.append(("high_forkbomb", "Fork bomb detected — blocked."))
     if _OBFUSCATION.search(cmd):
-        findings.append(("obfuscation",
-                         "Shell obfuscation detected (${IFS} splitting or base64-to-shell). "
-                         "Read the command carefully before running."))
+        findings.append(
+            (
+                "obfuscation",
+                "Shell obfuscation detected (${IFS} splitting or base64-to-shell). "
+                "Read the command carefully before running.",
+            )
+        )
     for name, pattern, why in _MEDIUM:
         if name == "rm_recursive" and _is_safe_artifact_rm(cmd):
             continue  # whitelisted: nuking build artifacts only
@@ -175,10 +222,13 @@ def check_path_within_boundary(path, boundary):
 
 
 def main(argv=None):
-    ap = argparse.ArgumentParser(prog="guardian",
-                                 description="destructive-command / edit-boundary scanner")
+    ap = argparse.ArgumentParser(
+        prog="guardian", description="destructive-command / edit-boundary scanner"
+    )
     ap.add_argument("--cmd", default=None, help="shell command string to scan")
-    ap.add_argument("--path", default=None, help="file path to check against --boundary")
+    ap.add_argument(
+        "--path", default=None, help="file path to check against --boundary"
+    )
     ap.add_argument("--boundary", default=None, help="allowed directory for --path")
     ap.add_argument("--json", action="store_true", help="machine-readable output")
     args = ap.parse_args(argv)
@@ -190,11 +240,22 @@ def main(argv=None):
         inside = check_path_within_boundary(args.path, args.boundary)
         if args.json:
             import json
-            print(json.dumps({"tier": "clean" if inside else "deny",
-                              "path": args.path, "boundary": args.boundary}))
+
+            print(
+                json.dumps(
+                    {
+                        "tier": "clean" if inside else "deny",
+                        "path": args.path,
+                        "boundary": args.boundary,
+                    }
+                )
+            )
         else:
-            print("clean: within boundary" if inside
-                  else f"DENY: {args.path} is outside boundary {args.boundary}")
+            print(
+                "clean: within boundary"
+                if inside
+                else f"DENY: {args.path} is outside boundary {args.boundary}"
+            )
         return 0 if inside else 2
 
     cmd = args.cmd if args.cmd is not None else sys.stdin.read()
@@ -204,8 +265,15 @@ def main(argv=None):
     tier, findings = scan_command(cmd)
     if args.json:
         import json
-        print(json.dumps({"tier": tier,
-                          "findings": [{"pattern": n, "why": w} for n, w in findings]}))
+
+        print(
+            json.dumps(
+                {
+                    "tier": tier,
+                    "findings": [{"pattern": n, "why": w} for n, w in findings],
+                }
+            )
+        )
     else:
         if tier == "clean":
             print("guardian: clean")
