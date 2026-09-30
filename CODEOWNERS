@@ -1,0 +1,5 @@
+# Default owner for everything in this repo.
+# Adjust per-directory as the team grows, e.g.:
+#   /docs/      @halvo78
+#   /.github/   @halvo78
+* @halvo78
