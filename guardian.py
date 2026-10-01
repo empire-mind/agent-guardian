@@ -24,6 +24,8 @@ import os
 import re
 import sys
 
+__version__ = "0.1.0"
+
 # ---------------------------------------------------------------------------
 # Patterns (MEDIUM tier — advisory warns). Each: (name, regex, explanation)
 # ---------------------------------------------------------------------------
@@ -181,7 +183,12 @@ def main(argv=None):
     ap.add_argument("--path", default=None, help="file path to check against --boundary")
     ap.add_argument("--boundary", default=None, help="allowed directory for --path")
     ap.add_argument("--json", action="store_true", help="machine-readable output")
+    ap.add_argument("--version", action="store_true", help="print the version and exit")
     args = ap.parse_args(argv)
+
+    if args.version:
+        print(__version__)
+        return 0
 
     if args.path is not None:
         if not args.boundary:
