@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
 """Tests for guardian.py — every assertion below was verified by running it."""
+
 import json
 import subprocess
 import sys
@@ -9,7 +10,7 @@ import pytest
 
 HERE = Path(__file__).resolve().parent
 sys.path.insert(0, str(HERE.parent))
-from guardian import scan_command, check_path_within_boundary  # noqa: E402
+from guardian import check_path_within_boundary, scan_command  # noqa: E402
 
 GUARDIAN = HERE.parent / "guardian.py"
 
@@ -102,8 +103,8 @@ class TestBoundary:
 class TestCLI:
     def run(self, *args, stdin=None):
         return subprocess.run(
-            [sys.executable, str(GUARDIAN), *args],
-            input=stdin, capture_output=True, text=True)
+            [sys.executable, str(GUARDIAN), *args], input=stdin, capture_output=True, text=True
+        )
 
     def test_cli_clean_exit_0(self):
         assert self.run("--cmd", "echo hi").returncode == 0
@@ -126,3 +127,24 @@ class TestCLI:
     def test_cli_boundary_deny_exit_2(self):
         r = self.run("--path", "/etc/passwd", "--boundary", "/tmp/work")
         assert r.returncode == 2
+
+    def test_cli_version(self):
+        r = self.run("--version")
+        assert r.returncode == 0
+        assert "guardian 0.1.0" in r.stdout
+
+
+CORPUS_PATH = HERE / "corpus.json"
+with open(CORPUS_PATH, encoding="utf-8") as _f:
+    CORPUS_DATA = json.load(_f)
+
+
+class TestCorpus:
+    @pytest.mark.parametrize("item", CORPUS_DATA, ids=lambda x: x["command"])
+    def test_corpus_command(self, item):
+        cmd = item["command"]
+        expected = item["expected_tier"]
+        actual, _ = scan_command(cmd)
+        assert actual == expected, (
+            f"Expected {expected} for {cmd!r}, got {actual} ({item['rationale']})"
+        )

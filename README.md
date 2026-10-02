@@ -1,5 +1,7 @@
 # agent-guardian — the agent firewall
 
+English | [简体中文](README.zh-CN.md)
+
 One file. Stdlib only. Zero dependencies. It sits in front of every shell
 command your AI agent wants to run and answers one question: **is this safe?**
 
