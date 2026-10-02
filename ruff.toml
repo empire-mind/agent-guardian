@@ -1,0 +1,8 @@
+# ruff.toml — configuration for agent-guardian
+target-version = "py310"
+line-length = 100
+exclude = [".pytest_cache"]
+
+[lint]
+select = ["E", "F", "W", "I"]
+ignore = ["E501", "E402"]
